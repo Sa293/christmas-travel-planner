@@ -67,17 +67,18 @@ def create_travel_plan():
         travel_dates = f"{start_date} to {end_date}" if start_date and end_date else "Not specified"
         
         # Calculate duration
+        duration = "Not specified"
+        duration_days = None
         if start_date and end_date:
             from datetime import datetime
             try:
                 start = datetime.strptime(start_date, '%Y-%m-%d')
                 end = datetime.strptime(end_date, '%Y-%m-%d')
-                days = (end - start).days + 1
+                days = max((end - start).days + 1, 1)
+                duration_days = days
                 duration = f"{days} days"
-            except:
+            except Exception:
                 duration = "Not specified"
-        else:
-            duration = "Not specified"
         
         # Map budget slider value to budget category
         budget_value = data.get('budget', [1500])[0] if isinstance(data.get('budget'), list) else data.get('budget', 1500)
@@ -90,16 +91,7 @@ def create_travel_plan():
         
         # Map interests
         interests = data.get('interests', [])
-        # Map frontend interest IDs to backend format
-        interest_mapping = {
-            'food': 'food',
-            'crafts': 'culture',
-            'music': 'culture',
-            'shopping': 'shopping',
-            'history': 'culture',
-            'photo': 'culture'
-        }
-        mapped_interests = [interest_mapping.get(i, i) for i in interests]
+        mapped_interests = interests if interests else ['food', 'culture']
         
         # Map pace
         pace_mapping = {
@@ -115,10 +107,14 @@ def create_travel_plan():
             'travel_dates': travel_dates,
             'duration': duration,
             'budget': budget_category,
-            'interests': mapped_interests if mapped_interests else ['culture', 'food'],
+            'interests': mapped_interests,
             'pace': pace,
             'language': data.get('language', 'en'),
-            'travel_companions': 'Not specified'  # Can be added to form later
+            'travel_companions': 'Not specified',  # Can be added to form later
+            'start_date': start_date,
+            'end_date': end_date,
+            'duration_days': duration_days,
+            'budget_value': budget_value,
         }
         
         logger.info(f"Processing travel plan request: {user_preferences}")

@@ -1,88 +1,84 @@
 """
-Accommodation Agent - Suggests hotels, hostels, and Airbnb options.
+Accommodation Agent - Suggests hotels, hostels, and apartment-style stays.
 """
-from gemini_client import GeminiClient
 import logging
+from typing import List
+
+from data import MARKET_PROFILES
 
 logger = logging.getLogger(__name__)
 
 
 class AccommodationAgent:
     """Agent responsible for accommodation recommendations."""
-    
-    def __init__(self, gemini_client: GeminiClient):
-        """Initialize the accommodation agent."""
-        self.gemini = gemini_client
-    
+
+    def __init__(self, _=None):
+        self.market_profiles = MARKET_PROFILES
+
     def get_accommodation_recommendations(self, itinerary: dict, user_preferences: dict) -> dict:
-        """
-        Get accommodation recommendations for the trip.
-        
-        Args:
-            itinerary: The travel itinerary
-            user_preferences: User preferences including budget and travel companions
-        
-        Returns:
-            Dictionary with accommodation recommendations
-        """
-        prompt = self._build_accommodation_prompt(itinerary, user_preferences)
-        
+        """Return curated accommodation ideas for each city."""
         try:
-            response = self.gemini.generate_response(prompt, temperature=0.7)
-            accommodations = self._parse_accommodations(response, user_preferences)
-            return accommodations
-        except Exception as e:
-            logger.error(f"Error getting accommodation recommendations: {str(e)}")
+            recommendations = self._build_accommodation_summary(user_preferences)
+            return {
+                "accommodations": recommendations,
+                "raw_response": recommendations,
+                "preferences": user_preferences,
+            }
+        except Exception as exc:
+            logger.error("Error getting accommodation recommendations: %s", exc)
             return self._get_fallback_accommodations(user_preferences)
-    
-    def _build_accommodation_prompt(self, itinerary: dict, preferences: dict) -> str:
-        """Build the prompt for accommodation recommendations."""
-        budget = preferences.get('budget', 'Not specified')
-        markets = preferences.get('recommended_markets', [])
-        companions = preferences.get('travel_companions', 'Not specified')
-        duration = preferences.get('duration', 'Not specified')
-        
-        prompt = f"""Provide accommodation recommendations for a Christmas market trip:
 
-Cities to Visit: {', '.join(markets) if markets else 'Multiple European cities'}
-Budget: {budget}
-Travel Companions: {companions}
-Trip Duration: {duration}
+    # ------------------------------------------------------------------ helpers
+    def _build_accommodation_summary(self, preferences: dict) -> str:
+        markets: List[str] = preferences.get("recommended_markets", [])
+        if not markets:
+            markets = list(self.market_profiles.keys())[:3]
 
-For each city, provide:
-1. Hotel recommendations (luxury, mid-range, budget options)
-2. Hostel options for budget travelers
-3. Airbnb/vacation rental suggestions
-4. Best neighborhoods/areas to stay in each city
-5. Proximity to Christmas markets and attractions
-6. Estimated costs per night for each option
-7. Booking tips and best practices
-8. Special considerations (family-friendly, pet-friendly, etc.)
+        budget = preferences.get("budget", "Mid-range")
 
-Consider the budget ({budget}) and provide realistic recommendations.
-Format the response clearly with specific suggestions for each city."""
-        
-        return prompt
-    
-    def _parse_accommodations(self, response: str, preferences: dict) -> dict:
-        """Parse the accommodation recommendations."""
-        return {
-            "accommodations": response,
-            "raw_response": response,
-            "preferences": preferences
-        }
-    
+        lines = [f"Stay suggestions ({budget} focus):", ""]
+
+        for city in markets:
+            profile = self.market_profiles.get(city, {})
+            lines.append(f"{city}:")
+
+            accommodations = profile.get("accommodations", [])
+            if not accommodations:
+                lines.append("  - Stay inside the old town walls for quick market access.")
+                lines.append("")
+                continue
+
+            for option in accommodations:
+                lines.append(
+                    f"  - {option['name']} ({option['price']}): {option['type']}. {option['note']}"
+                )
+
+            lines.append("")
+
+        lines.extend(
+            [
+                "Booking tips:",
+                "- Reserve cancellable rates 3-4 months ahead; markets fill fast.",
+                "- Choose properties within the pedestrian zone so you can warm up between stalls.",
+                "- If traveling with friends, look for serviced apartments to split costs.",
+            ]
+        )
+
+        return "\n".join(lines).strip()
+
     def _get_fallback_accommodations(self, preferences: dict) -> dict:
         """Provide fallback accommodation recommendations."""
-        markets = preferences.get('recommended_markets', [])
-        
+        markets = preferences.get("recommended_markets", [])
+        text = (
+            f"Accommodation recommendations for {', '.join(markets) if markets else 'your destinations'}:\n"
+            "- Hotels: Check Booking.com or Expedia for options near city centers\n"
+            "- Hostels: Hostelworld for budget-friendly dorms close to tram stops\n"
+            "- Apartments: Airbnb/Plum Guide for longer stays or families\n"
+            "- Book early during Christmas market season (late November - December)"
+        )
         return {
-            "accommodations": f"Accommodation recommendations for {', '.join(markets) if markets else 'your destinations'}:\n"
-                            "- Hotels: Check Booking.com, Expedia for options near city centers\n"
-                            "- Hostels: Hostelworld for budget-friendly options\n"
-                            "- Airbnb: Great for longer stays and family groups\n"
-                            "- Book early during Christmas market season (late November - December)",
-            "raw_response": "Fallback accommodations",
-            "preferences": preferences
+            "accommodations": text,
+            "raw_response": text,
+            "preferences": preferences,
         }
 

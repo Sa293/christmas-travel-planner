@@ -189,12 +189,15 @@
 
 @keyframes snowfall {
   0% {
-    transform: translateY(-100vh) rotate(0deg);
-    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--snow-peak-opacity, 0.85);
   }
   100% {
-    transform: translateY(100vh) rotate(360deg);
-    opacity: 0.3;
+    transform: translate3d(var(--snow-drift, 0px), 110vh, 0) rotate(360deg);
+    opacity: 0;
   }
 }
 
@@ -240,6 +243,7 @@
 
 .animate-snowfall {
   animation: snowfall linear infinite;
+  will-change: transform, opacity;
 }
 
 .animate-float {

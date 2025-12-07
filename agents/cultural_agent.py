@@ -1,86 +1,95 @@
 """
 Cultural Agent - Provides local insights, food recommendations, events, and cultural tips.
 """
-from gemini_client import GeminiClient
 import logging
+from typing import List
+
+from data import MARKET_PROFILES
 
 logger = logging.getLogger(__name__)
 
 
 class CulturalAgent:
     """Agent responsible for cultural information and local insights."""
-    
-    def __init__(self, gemini_client: GeminiClient):
-        """Initialize the cultural agent."""
-        self.gemini = gemini_client
-    
+
+    def __init__(self, _=None):
+        self.market_profiles = MARKET_PROFILES
+
     def get_cultural_insights(self, recommended_markets: list, user_preferences: dict) -> dict:
-        """
-        Get cultural insights, food recommendations, and local tips.
-        
-        Args:
-            recommended_markets: List of recommended markets
-            user_preferences: User preferences including interests
-        
-        Returns:
-            Dictionary with cultural information
-        """
-        prompt = self._build_cultural_prompt(recommended_markets, user_preferences)
-        
+        """Return cultural notes and insider tips for each market."""
         try:
-            response = self.gemini.generate_response(prompt, temperature=0.8)
-            cultural_info = self._parse_cultural_info(response, user_preferences)
-            return cultural_info
-        except Exception as e:
-            logger.error(f"Error getting cultural insights: {str(e)}")
+            insights = self._build_cultural_notes(recommended_markets)
+            return {
+                "cultural_insights": insights,
+                "raw_response": insights,
+                "preferences": user_preferences,
+            }
+        except Exception as exc:
+            logger.error("Error getting cultural insights: %s", exc)
             return self._get_fallback_cultural_info(recommended_markets)
-    
-    def _build_cultural_prompt(self, markets: list, preferences: dict) -> str:
-        """Build the prompt for cultural information."""
-        markets_str = ", ".join(markets) if isinstance(markets, list) else str(markets)
-        interests = ", ".join(preferences.get('interests', []))
-        
-        prompt = f"""Provide comprehensive cultural insights and local tips for visiting these Christmas markets: {markets_str}
 
-User Interests: {interests}
+    # ------------------------------------------------------------------ helpers
+    def _build_cultural_notes(self, markets: List[str]) -> str:
+        if not markets:
+            markets = list(self.market_profiles.keys())[:3]
 
-For each market, provide:
-1. Local Food & Drinks: Traditional Christmas market foods, must-try dishes, local specialties, mulled wine (Glühwein), hot chocolate, regional treats
-2. Cultural Events: Special events, concerts, performances, traditional celebrations during the market period
-3. Local Customs & Etiquette: How to interact with locals, tipping culture, market etiquette, what to expect
-4. Nearby Attractions: Museums, historical sites, churches, viewpoints, other tourist attractions near the markets
-5. Shopping Tips: What to buy, local crafts, souvenirs, market stalls to visit
-6. Weather & What to Wear: Expected weather conditions, appropriate clothing, staying warm
-7. Language Tips: Basic phrases in local language, how to communicate
-8. Safety Tips: General safety advice, areas to be cautious, emergency contacts
-9. Photography Tips: Best spots for photos, market highlights
-10. Family-Friendly Activities: If applicable, activities suitable for children
+        lines = ["Cultural snapshots to keep your trip effortless:", ""]
 
-Make the information practical, specific, and engaging.
-Format it clearly for each market."""
-        
-        return prompt
-    
-    def _parse_cultural_info(self, response: str, preferences: dict) -> dict:
-        """Parse the cultural information."""
-        return {
-            "cultural_insights": response,
-            "raw_response": response,
-            "preferences": preferences
-        }
-    
+        for city in markets:
+            profile = self.market_profiles.get(city, {})
+            culture = profile.get("culture", {})
+            foods = profile.get("foods", [])
+            experiences = profile.get("experiences", [])
+
+            lines.append(f"{city}:")
+
+            if foods:
+                lines.append(f"  • Must-try bites: {', '.join(foods[:2])}.")
+
+            customs = culture.get("customs", [])
+            if customs:
+                lines.append(f"  • Local tradition: {customs[0]}")
+
+            tips = culture.get("tips", [])
+            if tips:
+                lines.append(f"  • Insider tip: {tips[0]}")
+
+            phrases = culture.get("phrases", [])
+            if phrases:
+                lines.append(f"  • Say it like a local: {phrases[0]}")
+
+            if experiences:
+                lines.append(f"  • Evening vibe: {experiences[0]}")
+
+            lines.append("")
+
+        lines.extend(
+            [
+                "General etiquette:",
+                "- Most stalls take cash; keep €1-2 coins for mug deposits.",
+                "- Layers are your friend—temperatures swing between day sun and frosty nights.",
+                "- Bring a reusable tote or backpack for artisan finds (many cities encourage low waste).",
+            ]
+        )
+
+        return "\n".join(lines).strip()
+
     def _get_fallback_cultural_info(self, markets: list) -> dict:
         """Provide fallback cultural information."""
         markets_str = ", ".join(markets) if isinstance(markets, list) else str(markets)
-        
+
+        text = (
+            f"Cultural tips for {markets_str}:\n"
+            "- Try local mulled wine (Glühwein) and traditional Christmas treats\n"
+            "- Dress warmly as markets are outdoors\n"
+            "- Visit markets in the evening for the best atmosphere\n"
+            "- Learn basic greetings in the local language\n"
+            "- Bring cash as some stalls don't accept cards"
+        )
+
         return {
-            "cultural_insights": f"Cultural tips for {markets_str}:\n"
-                                "- Try local mulled wine (Glühwein) and traditional Christmas treats\n"
-                                "- Dress warmly as markets are outdoors\n"
-                                "- Visit markets in the evening for the best atmosphere\n"
-                                "- Learn basic greetings in the local language\n"
-                                "- Bring cash as some stalls don't accept cards",
-            "raw_response": "Fallback cultural info",
-            "preferences": {}
+            "cultural_insights": text,
+            "raw_response": text,
+            "preferences": {},
         }
 

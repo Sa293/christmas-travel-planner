@@ -1,83 +1,104 @@
 """
 Transport Agent - Provides transportation options and recommendations.
 """
-from gemini_client import GeminiClient
 import logging
+from typing import List
+
+from data import MARKET_PROFILES
 
 logger = logging.getLogger(__name__)
 
 
 class TransportAgent:
     """Agent responsible for transportation recommendations."""
-    
-    def __init__(self, gemini_client: GeminiClient):
-        """Initialize the transport agent."""
-        self.gemini = gemini_client
-    
+
+    def __init__(self, _=None):
+        self.market_profiles = MARKET_PROFILES
+
     def get_transport_options(self, itinerary: dict, user_preferences: dict) -> dict:
-        """
-        Get transportation options for the itinerary.
-        
-        Args:
-            itinerary: The travel itinerary
-            user_preferences: User preferences including departure city
-        
-        Returns:
-            Dictionary with transportation options and costs
-        """
-        prompt = self._build_transport_prompt(itinerary, user_preferences)
-        
+        """Return transport guidance using curated rail and flight tips."""
         try:
-            response = self.gemini.generate_response(prompt, temperature=0.6)
-            transport_info = self._parse_transport_info(response, user_preferences)
-            return transport_info
-        except Exception as e:
-            logger.error(f"Error getting transport options: {str(e)}")
+            plan = self._build_transport_plan(user_preferences)
+            return {
+                "transport_options": plan,
+                "raw_response": plan,
+                "preferences": user_preferences,
+            }
+        except Exception as exc:
+            logger.error("Error getting transport options: %s", exc)
             return self._get_fallback_transport(user_preferences)
-    
-    def _build_transport_prompt(self, itinerary: dict, preferences: dict) -> str:
-        """Build the prompt for transportation recommendations."""
-        departure = preferences.get('departure_city', 'Not specified')
-        budget = preferences.get('budget', 'Not specified')
-        markets = preferences.get('recommended_markets', [])
-        
-        prompt = f"""Provide detailed transportation options for a Christmas market trip:
 
-Departure City: {departure}
-Budget: {budget}
-Markets to Visit: {', '.join(markets) if markets else 'Multiple European cities'}
+    # ------------------------------------------------------------------ helpers
+    def _build_transport_plan(self, preferences: dict) -> str:
+        markets: List[str] = preferences.get("recommended_markets", [])
+        if not markets:
+            markets = list(self.market_profiles.keys())[:3]
 
-Provide recommendations for:
-1. Flights: Best airports, airlines, and approximate costs from {departure}
-2. Trains: European rail options (Eurail, national railways), routes, and costs
-3. Buses: Intercity bus services and costs
-4. Car Rental: If applicable, rental options and considerations
-5. Local Transportation: Public transport, taxis, walking in each city
-6. Best combination of transport modes for this itinerary
-7. Estimated total transportation costs
-8. Booking tips and best practices
+        departure = preferences.get("departure_city", "your city")
+        first_profile = self.market_profiles.get(markets[0], {})
 
-Consider the budget ({budget}) and provide realistic cost estimates.
-Format the response clearly with specific recommendations."""
-        
-        return prompt
-    
-    def _parse_transport_info(self, response: str, preferences: dict) -> dict:
-        """Parse the transport information."""
-        return {
-            "transport_options": response,
-            "raw_response": response,
-            "preferences": preferences
-        }
-    
+        lines = [
+            f"Arriving from {departure}:",
+            first_profile.get(
+                "transport", {}
+            ).get(
+                "arrival",
+                f"Book a flight into the nearest major airport for {markets[0]} and connect by rail.",
+            ),
+            "",
+            "Inter-city connections:",
+        ]
+
+        for i in range(len(markets) - 1):
+            step = self._connection_text(markets[i], markets[i + 1])
+            lines.append(f"- {step}")
+
+        lines.extend(
+            [
+                "",
+                "Local transport tips:",
+            ]
+        )
+
+        for city in markets:
+            profile = self.market_profiles.get(city, {})
+            local_tip = profile.get("transport", {}).get(
+                "local", "Compact old town — walk everywhere."
+            )
+            lines.append(f"• {city}: {local_tip}")
+
+        lines.extend(
+            [
+                "",
+                "Booking tips:",
+                "- Lock in long-distance rail tickets 60-90 days out for the best fares.",
+                "- Use a regional rail pass (Eurail, German Rail Pass) if you plan 4+ train segments.",
+                "- Keep €1-2 coins for lockers and tram tickets at market entrances.",
+            ]
+        )
+
+        return "\n".join(lines)
+
+    def _connection_text(self, current_city: str, next_city: str) -> str:
+        profile = self.market_profiles.get(current_city, {})
+        connections = profile.get("transport", {}).get("connections", [])
+
+        for conn in connections:
+            if current_city in conn and next_city in conn:
+                return conn
+
+        return f"{current_city} → {next_city}: Regional train or FlixBus (1-3h depending on service)."
+
     def _get_fallback_transport(self, preferences: dict) -> dict:
         """Provide fallback transport information."""
+        text = (
+            f"Recommended transportation from {preferences.get('departure_city', 'your city')}:\n"
+            "- Flights: Check major airlines for European destinations\n"
+            "- Trains: Consider Eurail pass for multiple cities\n"
+            "- Local: Use public transportation in each city"
+        )
         return {
-            "transport_options": f"Recommended transportation from {preferences.get('departure_city', 'your city')}:\n"
-                                "- Flights: Check major airlines for European destinations\n"
-                                "- Trains: Consider Eurail pass for multiple cities\n"
-                                "- Local: Use public transportation in each city",
-            "raw_response": "Fallback transport info",
-            "preferences": preferences
+            "transport_options": text,
+            "raw_response": text,
+            "preferences": preferences,
         }
-

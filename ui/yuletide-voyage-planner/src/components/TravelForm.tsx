@@ -84,6 +84,7 @@ const TravelForm: React.FC = () => {
       
       // Store the response in sessionStorage and navigate
       sessionStorage.setItem('travelPlan', JSON.stringify(response));
+      sessionStorage.setItem('formData', JSON.stringify(formData));
       navigate('/itinerary', { state: { travelPlan: response, formData } });
     } catch (error) {
       console.error('Error creating travel plan:', error);

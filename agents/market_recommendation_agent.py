@@ -1,101 +1,153 @@
 """
 Market Recommendation Agent - Suggests Christmas markets based on user preferences.
 """
-from gemini_client import GeminiClient
-from config import CHRISTMAS_MARKETS
+from typing import List, Dict, Tuple
+
 import logging
+
+from config import CHRISTMAS_MARKETS
+from data import MARKET_PROFILES
 
 logger = logging.getLogger(__name__)
 
 
 class MarketRecommendationAgent:
     """Agent responsible for recommending Christmas markets."""
-    
-    def __init__(self, gemini_client: GeminiClient):
-        """Initialize the market recommendation agent."""
-        self.gemini = gemini_client
+
+    def __init__(self, _=None):
+        """
+        Initialize the market recommendation agent.
+        Gemini is optional – we use curated data when no model is configured.
+        """
         self.markets = CHRISTMAS_MARKETS
-    
+        self.market_profiles = MARKET_PROFILES
+
     def recommend_markets(self, user_preferences: dict) -> dict:
         """
         Recommend Christmas markets based on user preferences.
-        
-        Args:
-            user_preferences: Dictionary containing:
-                - departure_city: User's departure city
-                - travel_dates: Travel dates
-                - budget: Budget range
-                - interests: List of interests (food, culture, shopping, etc.)
-                - pace: Travel pace (relaxed, moderate, intense)
-                - language: Preferred language
-        
-        Returns:
-            Dictionary with recommended markets and reasoning
         """
-        prompt = self._build_recommendation_prompt(user_preferences)
-        
         try:
-            response = self.gemini.generate_response(prompt, temperature=0.8)
-            
-            # Parse and structure the response
-            recommendations = self._parse_recommendations(response, user_preferences)
-            return recommendations
-        except Exception as e:
-            logger.error(f"Error in market recommendation: {str(e)}")
-            return self._get_fallback_recommendations(user_preferences)
-    
-    def _build_recommendation_prompt(self, preferences: dict) -> str:
-        """Build the prompt for market recommendations."""
-        interests = ", ".join(preferences.get("interests", []))
-        
-        prompt = f"""You are a Christmas market travel expert. Recommend the best Christmas markets in Europe based on the following preferences:
+            top_markets = self._score_markets(user_preferences)
+            if not top_markets:
+                raise ValueError("No markets scored.")
 
-Departure City: {preferences.get('departure_city', 'Not specified')}
-Travel Dates: {preferences.get('travel_dates', 'Not specified')}
-Budget: {preferences.get('budget', 'Not specified')}
-Interests: {interests}
-Travel Pace: {preferences.get('pace', 'moderate')}
-Language Preference: {preferences.get('language', 'English')}
+            formatted = self._format_recommendations(top_markets, user_preferences)
+            return {
+                "recommendations": formatted,
+                "raw_response": formatted,
+                "user_preferences": user_preferences,
+            }
+        except Exception as exc:
+            logger.error("Error in market recommendation: %s", exc)
+            fallback = self._get_fallback_recommendations(user_preferences)
+            return fallback
 
-Available Christmas Markets by Country:
-- Germany: {', '.join(self.markets.get('germany', []))}
-- Austria: {', '.join(self.markets.get('austria', []))}
-- France: {', '.join(self.markets.get('france', []))}
-- Czech Republic: {', '.join(self.markets.get('czech_republic', []))}
-- Switzerland: {', '.join(self.markets.get('switzerland', []))}
-- Belgium: {', '.join(self.markets.get('belgium', []))}
+    # ------------------------------------------------------------------ helpers
+    def _score_markets(self, preferences: dict) -> List[Dict]:
+        """Score markets using static knowledge and user interests."""
+        interests = preferences.get("interests", [])
+        budget = (preferences.get("budget") or "").lower()
+        pace = preferences.get("pace", "moderate")
+        duration_days = preferences.get("duration_days", 5)
 
-Provide:
-1. Top 3-5 recommended markets with brief explanations
-2. Why each market matches their preferences
-3. Best time to visit each market
-4. Unique features of each market
+        scored: List[Tuple[str, float]] = []
 
-Format your response clearly and concisely."""
-        
-        return prompt
-    
-    def _parse_recommendations(self, response: str, preferences: dict) -> dict:
-        """Parse the AI response into a structured format."""
-        return {
-            "recommendations": response,
-            "raw_response": response,
-            "user_preferences": preferences
-        }
-    
+        for city, profile in self.market_profiles.items():
+            score = 50.0
+
+            # Interests
+            for interest in interests:
+                if interest in profile.get("best_for", []):
+                    score += 8
+
+            # Budget alignment
+            price_level = profile.get("price_level", "")
+            if budget.startswith("budget") and price_level == "budget":
+                score += 6
+            elif budget.startswith("mid") and price_level == "mid":
+                score += 6
+            elif budget.startswith("lux") and price_level in {"premium", "luxury"}:
+                score += 6
+
+            # Travel pace
+            if pace == profile.get("ideal_pace"):
+                score += 5
+
+            # Seasonal availability boost for longer trips (encourage variety)
+            score += min(duration_days, 8) * 0.8
+
+            scored.append(
+                {
+                    "city": city,
+                    "score": score,
+                    "profile": profile,
+                }
+            )
+
+        scored.sort(key=lambda item: item["score"], reverse=True)
+        return scored[:5]
+
+    def _format_recommendations(
+        self, markets: List[Dict], preferences: dict
+    ) -> str:
+        """Format recommendations into human-friendly text."""
+        lines = [
+            "Top Christmas markets selected for your wish list:",
+            "",
+        ]
+
+        for index, item in enumerate(markets, start=1):
+            profile = item["profile"]
+            lines.append(
+                f"{index}. {item['city']} ({profile['country']}) – {profile['dates']}"
+            )
+            lines.append(f"   Why it fits: {profile['summary']}")
+
+            highlights = profile.get("highlights", [])
+            if highlights:
+                lines.append(f"   Don't miss: {highlights[0]}")
+
+            foods = profile.get("foods", [])
+            if foods:
+                lines.append(f"   Taste: {foods[0]} & {foods[1] if len(foods) > 1 else foods[0]}")
+
+            lines.append(
+                f"   Best for: {', '.join(profile.get('best_for', []))}"
+            )
+            lines.append("")
+
+        lines.append(
+            "Tip: Mix nearby cities (e.g., Munich + Salzburg) to keep travel easy."
+        )
+
+        return "\n".join(lines).strip()
+
     def _get_fallback_recommendations(self, preferences: dict) -> dict:
-        """Provide fallback recommendations if AI fails."""
-        # Default recommendations based on common preferences
-        default_markets = {
-            "germany": ["Nuremberg", "Munich", "Dresden"],
-            "austria": ["Vienna", "Salzburg"],
-            "france": ["Strasbourg", "Colmar"]
+        """Provide fallback recommendations if scoring fails."""
+        default_markets = ["Nuremberg", "Munich", "Vienna", "Strasbourg", "Prague"]
+        default_profile = {
+            "country": "Europe",
+            "dates": "Advent season",
+            "summary": "Classic Christmas market atmosphere.",
+            "best_for": ["food", "crafts"],
+            "highlights": [],
+            "foods": [],
         }
-        
+        recommendations = self._format_recommendations(
+            [
+                {
+                    "city": city,
+                    "score": 0,
+                    "profile": self.market_profiles.get(city, default_profile),
+                }
+                for city in default_markets
+            ],
+            preferences,
+        )
+
         return {
-            "recommendations": "Based on your preferences, I recommend visiting: " + 
-                             ", ".join(default_markets.get("germany", [])),
-            "raw_response": "Fallback recommendations",
-            "user_preferences": preferences
+            "recommendations": recommendations,
+            "raw_response": recommendations,
+            "user_preferences": preferences,
         }
 

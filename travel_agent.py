@@ -1,7 +1,6 @@
 """
 Main Travel Agent - Orchestrates all agents to provide comprehensive travel assistance.
 """
-from gemini_client import GeminiClient
 from agents import (
     MarketRecommendationAgent,
     ItineraryAgent,
@@ -9,6 +8,7 @@ from agents import (
     AccommodationAgent,
     CulturalAgent
 )
+from gemini_client import GeminiClient
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,9 +19,20 @@ class ChristmasMarketTravelAgent:
     
     def __init__(self, api_key: str = None):
         """Initialize the travel agent with all sub-agents."""
-        self.gemini_client = GeminiClient(api_key)
+        self.gemini_client = None
+        if api_key:
+            try:
+                self.gemini_client = GeminiClient(api_key)
+                logger.info("Gemini client initialized successfully")
+            except Exception as exc:
+                logger.warning(
+                    "Gemini client unavailable (%s). Falling back to curated data.",
+                    exc,
+                )
+        else:
+            logger.info("No Gemini API key supplied. Using curated market data.")
         
-        # Initialize all agents
+        # Initialize all agents (they gracefully fall back if gemini_client is None)
         self.market_agent = MarketRecommendationAgent(self.gemini_client)
         self.itinerary_agent = ItineraryAgent(self.gemini_client)
         self.transport_agent = TransportAgent(self.gemini_client)
