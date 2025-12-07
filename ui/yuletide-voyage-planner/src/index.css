@@ -1,0 +1,266 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap');
+
+@layer base {
+  :root {
+    --background: 35 30% 96%;
+    --foreground: 30 15% 15%;
+
+    --card: 35 25% 98%;
+    --card-foreground: 30 15% 15%;
+
+    --popover: 35 25% 98%;
+    --popover-foreground: 30 15% 15%;
+
+    --primary: 0 65% 45%;
+    --primary-foreground: 35 30% 96%;
+
+    --secondary: 150 45% 25%;
+    --secondary-foreground: 35 30% 96%;
+
+    --muted: 35 20% 90%;
+    --muted-foreground: 30 10% 45%;
+
+    --accent: 45 85% 55%;
+    --accent-foreground: 30 15% 15%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 35 20% 85%;
+    --input: 35 20% 85%;
+    --ring: 0 65% 45%;
+
+    --radius: 0.75rem;
+
+    /* Custom festive tokens */
+    --gold: 45 85% 55%;
+    --gold-dark: 40 75% 45%;
+    --forest: 150 45% 25%;
+    --forest-light: 150 35% 35%;
+    --cream: 35 30% 96%;
+    --cream-dark: 35 25% 90%;
+    --wine: 350 60% 30%;
+    --snow: 210 30% 98%;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(0 65% 45% / 0.9), hsl(350 60% 30% / 0.95));
+    --gradient-card: linear-gradient(180deg, hsl(35 25% 98%), hsl(35 20% 95%));
+    --gradient-gold: linear-gradient(135deg, hsl(45 85% 55%), hsl(40 75% 45%));
+
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(30 15% 15% / 0.1);
+    --shadow-warm: 0 8px 30px -8px hsl(0 65% 45% / 0.2);
+    --shadow-glow: 0 0 40px hsl(45 85% 55% / 0.3);
+
+    --sidebar-background: 35 25% 98%;
+    --sidebar-foreground: 30 15% 15%;
+    --sidebar-primary: 0 65% 45%;
+    --sidebar-primary-foreground: 35 30% 96%;
+    --sidebar-accent: 35 20% 90%;
+    --sidebar-accent-foreground: 30 15% 15%;
+    --sidebar-border: 35 20% 85%;
+    --sidebar-ring: 0 65% 45%;
+  }
+
+  .dark {
+    --background: 30 20% 10%;
+    --foreground: 35 25% 95%;
+
+    --card: 30 18% 14%;
+    --card-foreground: 35 25% 95%;
+
+    --popover: 30 18% 14%;
+    --popover-foreground: 35 25% 95%;
+
+    --primary: 0 60% 55%;
+    --primary-foreground: 30 20% 10%;
+
+    --secondary: 150 40% 35%;
+    --secondary-foreground: 35 25% 95%;
+
+    --muted: 30 15% 20%;
+    --muted-foreground: 35 15% 65%;
+
+    --accent: 45 80% 50%;
+    --accent-foreground: 30 20% 10%;
+
+    --border: 30 15% 25%;
+    --input: 30 15% 25%;
+    --ring: 0 60% 55%;
+
+    --gold: 45 80% 50%;
+    --gold-dark: 40 70% 40%;
+    --forest: 150 40% 35%;
+    --forest-light: 150 35% 45%;
+    --cream: 35 20% 15%;
+    --cream-dark: 35 15% 12%;
+    --wine: 350 55% 35%;
+    --snow: 210 20% 90%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(0 60% 35% / 0.95), hsl(350 50% 20% / 0.98));
+    --gradient-card: linear-gradient(180deg, hsl(30 18% 14%), hsl(30 15% 12%));
+    --gradient-gold: linear-gradient(135deg, hsl(45 80% 50%), hsl(40 70% 40%));
+
+    --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.3);
+    --shadow-warm: 0 8px 30px -8px hsl(0 60% 55% / 0.3);
+    --shadow-glow: 0 0 40px hsl(45 80% 50% / 0.2);
+
+    --sidebar-background: 30 18% 14%;
+    --sidebar-foreground: 35 25% 95%;
+    --sidebar-primary: 0 60% 55%;
+    --sidebar-primary-foreground: 30 20% 10%;
+    --sidebar-accent: 30 15% 20%;
+    --sidebar-accent-foreground: 35 25% 95%;
+    --sidebar-border: 30 15% 25%;
+    --sidebar-ring: 0 60% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .festive-card {
+    @apply bg-card rounded-xl shadow-soft border border-border/50 backdrop-blur-sm;
+    background: var(--gradient-card);
+  }
+
+  .gold-shimmer {
+    background: var(--gradient-gold);
+    background-size: 200% 200%;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-1;
+    box-shadow: var(--shadow-warm);
+  }
+
+  .text-gradient-gold {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+@layer utilities {
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-warm {
+    box-shadow: var(--shadow-warm);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+}
+
+/* Animations */
+@keyframes shimmer {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes snowfall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0.3;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-snowfall {
+  animation: snowfall linear infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-twinkle {
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.5s ease-out forwards;
+}
+
+/* Stagger delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
